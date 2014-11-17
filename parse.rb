@@ -1,30 +1,18 @@
 require 'json'
-require 'active_support/hash_with_indifferent_access'
-require 'debugger'
+require File.join(File.dirname(__FILE__), '.', 'cmdlinetool')
 
-OPTIONS = {
-  verbose: { string: ["-v", "--verbose"].freeze, doc: "print generated json" },
-  human: { string: "--human", doc: "generate human readable json file as well" },
-  help: { string: ["-h", "--help"], doc: "print this help" }
-}.freeze
+include Helpers
 
-def option?( name )
-  raise "Invalid option #{name}" if OPTIONS[ name.to_sym ].nil?
-
-  ARGV.any?{ |a| OPTIONS[ name.to_sym ][:string].include?( a ) }
-end
+OPTIONS = [
+  optdef(:verbose, ["-v", "--verbose"], "print generated json", false),
+  optdef(:human, "--human", "generate human readable json file as well", false)
+]
 
 def run
-  if ARGV.empty? || option?( "help" )
-    puts "Usage: ruby parse.rb [options] web_archive"
-    OPTIONS.each do |n, o|
-      str = o[:string].is_a?( Array ) ? o[:string].join(', ') : o[:string]
-      puts "  #{str}\t\t#{o[:doc]}"
-    end
-    abort
-  end
+  tty = CmdLineTool.new(OPTIONS)
+  tty.has_an_arg!
 
-  inputname = ARGV[0]
+  inputname = tty.input
   raise "File #{inputname} not found" unless File.file?( inputname )
 
   puts "Parsing #{inputname}..."
@@ -83,12 +71,12 @@ def run
   outputfile.write(output.to_json)
   puts "Done!"
 
-  if option?( "verbose" )
+  if argindex( "verbose" )
     puts "\nFile content:\n"
     puts JSON.pretty_generate( output, { space: " ", indent: "  " } )
   end
-rescue StandardError => e
-  puts "Error: #{e}"
+# rescue StandardError => e
+#   puts "Error: #{e}"
 end
 
 run

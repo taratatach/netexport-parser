@@ -3,6 +3,7 @@ require 'google/api_client/client_secrets'
 require 'google/api_client/auth/file_storage'
 require 'google/api_client/auth/installed_app'
 require 'logger'
+require 'pp'
 require File.join(File.dirname(__FILE__), '.', 'cmdlinetool')
 
 include Helpers
@@ -12,6 +13,7 @@ CACHED_API_FILE = "drive-#{API_VERSION}.cache"
 CREDENTIAL_STORE_FILE = "drive-oauth2.json"
 OAUTH_SCOPE = 'https://www.googleapis.com/auth/drive'
 REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob'
+SNAPSHOTS_FOLDER_ID = "0BxW5m4Ezq-HEYjNNQ0h3NnhmV1E"
 
 # OPTIONS = [
 #   optdef(:id, ["-i", "--clientid"], "Google Drive API Client ID",  true),
@@ -19,7 +21,7 @@ REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob'
 #   optdef(:code, ["-c", "--authorizationcode"], "Google Drive API Authorization Code", true)
 # ]
 
-def setup_drive(client_id, client_secret)
+def setup_drive
   log_file = File.open('drive.log', 'a+')
   log_file.sync = true
   logger = Logger.new(log_file)
@@ -68,17 +70,20 @@ def setup_drive(client_id, client_secret)
   return client, drive
 end
 
-
 # Handles files.insert call to Drive API.
-def insert_file(client, drive)
+def upload_file(client, drive, filename)
   # Insert a file
   file = drive.files.insert.request_schema.new({
-    'title' => 'My document',
-    'description' => 'A test document',
-    'mimeType' => 'text/plain'
+    'title' => 'report.json',
+    'description' => 'Performance snapshot',
+    'mimeType' => 'application/json',
+    'parents' => [{
+      "kind" => "drive#fileLink",
+      "id" => SNAPSHOTS_FOLDER_ID
+    }]
   })
 
-  media = Google::APIClient::UploadIO.new('document.txt', 'text/plain')
+  media = Google::APIClient::UploadIO.new(filename, 'application/json')
   result = client.execute(
     :api_method => drive.files.insert,
     :body_object => file,
@@ -93,16 +98,47 @@ def insert_file(client, drive)
   jj result.data.to_hash
 end
 
+##
+# Retrieve a list of File resources.
+#
+# @param [Google::APIClient] client
+#   Authorized client instance
+# @return [Array]
+#   List of File resources.
+#
+def retrieve_all_files(client, drive)
+  result = Array.new
+  page_token = nil
+  begin
+    parameters = {}
+    if page_token.to_s != ''
+      parameters['pageToken'] = page_token
+    end
+    api_result = client.execute(
+      :api_method => drive.files.list,
+      :parameters => parameters)
+    if api_result.status == 200
+      pp api_result.inspect
+      files = api_result.data
+      result.concat(files.items)
+      page_token = files.next_page_token
+    else
+      puts "An error occurred: #{result.data['error']['message']}"
+      page_token = nil
+    end
+  end while page_token.to_s != ''
+  result
+end
+
 def run
-  tty = CmdLineTool.new(OPTIONS)
+  tty = CmdLineTool.new
   tty.has_an_arg!
 
-  # # Get credentials from user
-  # client_id = tty.arg("id")
-  # client_secret = tty.arg("secret")
+  filename = tty.input
 
-  client, drive = setup_drive(client_id, client_secret)
-  insert_file(client, drive)
+  client, drive = setup_drive()
+  #retrieve_all_files(client, drive)
+  upload_file(client, drive, filename)
 end
 
 run

@@ -6,7 +6,7 @@ include Helpers
 
 OPTIONS = [
   optdef(:verbose, ["-v", "--verbose"], "print generated json", false),
-  optdef(:human, "--human", "generate human readable json file as well", false),
+  optdef(:human, "--human", "print result instead of writing to a file", false),
   optdef(:csv, "--csv", "generate CSV instead of JSON", false)
 ]
 

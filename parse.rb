@@ -1,11 +1,13 @@
 require 'json'
 require File.join(File.dirname(__FILE__), '.', 'cmdlinetool')
+require File.join(File.dirname(__FILE__), '.', 'harp')
 
 include Helpers
 
 OPTIONS = [
   optdef(:verbose, ["-v", "--verbose"], "print generated json", false),
-  optdef(:human, "--human", "generate human readable json file as well", false)
+  optdef(:human, "--human", "generate human readable json file as well", false),
+  optdef(:csv, "--csv", "generate CSV instead of JSON", false)
 ]
 
 def run
@@ -15,68 +17,34 @@ def run
   inputname = tty.input
   raise "File #{inputname} not found" unless File.file?( inputname )
 
-  puts "Parsing #{inputname}..."
-  inputfile = File.read( inputname )
-  puts "  Cleaning up data..."
-  inputfile = inputfile[12..-3]
-  puts "  Done!"
-  hash = JSON.parse(inputfile, { symbolize_names: true })
-  #hash = HashWithIndifferentAccess.new( hash )
-  puts "Done!" # Parsing
+  export = Harp.new( inputname )
 
-  puts "Extracting data..."
-  output = {}
+  if tty.argindex( "human" )
+    if tty.argindex( "csv" )
+      puts export.to_csv
+    else
+      puts JSON.pretty_generate( export.data, { space: " ", indent: "  " } )
+    end
+  else
+    if tty.argindex( "csv" )
+      output = export.to_csv
+      extension = "csv"
+    else
+      output = export.to_json
+      extension = "json"
+    end
 
-  puts "  Fetching pages..."
-  hash[:log][:pages].each do |page|
-    output[ page[:id] ] = {
-      url: nil,
-      timings: [
-        contentLoad: page[:pageTimings][:onContentLoad],
-        completeLoad: page[:pageTimings][:onLoad]
-      ],
-      parts: []
-    }
+    outputname = inputname.split('/').last.split('.').first + ".#{extension}"
+    outputfile = File.open(outputname, "w")
+    outputfile.write( output )
   end
-  puts "  Done!"
 
-  puts "  Fetching pages parts..."
-  hash[:log][:entries].each_with_index do |entry, index|
-    cacheControl = entry[:response][:headers].select{ |h| h[:name] == "Cache-Control" }
-    cacheControl = cacheControl.any? ? cacheControl.first[:value] : nil
-    rackCacheHit = entry[:response][:headers].select{ |h| h[:name] == "X-Rack-Cache" }
-    rackCacheHit = rackCacheHit.any? ? rackCacheHit.first[:value] : nil
-
-    output[ entry[:pageref] ][:url] = entry[:request][:url] if index == 0
-    output[ entry[:pageref] ][:parts] << {
-      dateTime: entry[:startedDateTime],
-      loadTime: entry[:time],
-      url: entry[:request][:url],
-      status: entry[:response][:status],
-      cacheControl: cacheControl,
-      rackCacheHit: rackCacheHit,
-      contentSize: entry[:response][:content][:size],
-      headersSize: entry[:response][:headersSize],
-      bodySize: entry[:response][:bodySize],
-      loadTimeBreakout: entry[:timings]
-    }
+  if tty.argindex( "verbose" )
+    puts "File content:\n"
+    puts JSON.pretty_generate( export.data, { space: " ", indent: "  " } )
   end
-  puts "  Done!"
-
-  puts "Done!" # Extracting
-
-  outputname = inputname.split('.').first + '.json'
-  puts "Saving data to #{outputname}..."
-  outputfile = File.open(outputname, "w")
-  outputfile.write(output.to_json)
-  puts "Done!"
-
-  if argindex( "verbose" )
-    puts "\nFile content:\n"
-    puts JSON.pretty_generate( output, { space: " ", indent: "  " } )
-  end
-# rescue StandardError => e
-#   puts "Error: #{e}"
+rescue StandardError => e
+  puts "Error: #{e}"
 end
 
 run

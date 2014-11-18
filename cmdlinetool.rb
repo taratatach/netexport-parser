@@ -1,3 +1,5 @@
+require 'byebug'
+
 module Helpers
   def optdef(name, str, doc, ipt)
     { name => { string: str, doc: doc, input: ipt } }
@@ -29,19 +31,29 @@ class CmdLineTool
   def argindex( name )
     raise "Invalid option #{name}" if options[ name.to_sym ].nil?
 
-    opts = options[ name.to_sym ][:string].each
-    begin
-      @argv.index{ |a|  a == opts.next }
-    rescue StopIteration
-      nil
+    index = nil
+    opts = options[ name.to_sym ][:string]
+
+    if opts.is_a?( Array )
+      opts = opts.each
+      begin
+        while index.nil? && o = opts.next
+          index = @argv.index{ |a|  a == o }
+        end
+      rescue StopIteration
+      end
+    else
+      index = @argv.index{ |a|  a == opts }
     end
+
+    index
   end
 
   def arg( name )
     return nil unless index = argindex( name )
     raise "Option #{name} does not take any input" unless options[ name.to_sym ][:input]
     raise "Invalid input for option #{name}" unless (input = @argv[ index + 1 ]) && input[0] != '-'
-  
+
     input
   end
 

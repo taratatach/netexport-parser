@@ -38,10 +38,17 @@ class Harp
       rackCacheHit = rackCacheHit.any? ? rackCacheHit.first[:value] : nil
 
       output[:url] = entry[:request][:url] if index == 0
-      output[:vendorSize] += entry[:response][:content][:size] if is_vendor?( entry )
-      output[:jsSize] += entry[:response][:content][:size] if is_js?( entry )
-      output[:cssSize] += entry[:response][:content][:size] if is_css?( entry )
-      output[:imagesSize] += entry[:response][:content][:size] if is_image?( entry )
+      sizeType = if is_vendor?( entry )
+        :vendorSize
+      elsif is_js?( entry )
+        :jsSize
+      elsif is_css?( entry )
+        :cssSize
+      elsif is_image?( entry )
+        :imagesSize
+      end
+      output[sizeType] += entry[:response][:content][:size] if sizeType
+
       output[:parts] << {
         dateTime: entry[:startedDateTime],
         loadTime: entry[:time],

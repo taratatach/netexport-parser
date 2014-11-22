@@ -81,6 +81,22 @@ class Harp
   def is_image?( entry )
     /\.(png|gif|jpg|jpeg)/ =~ entry[:request][:url]
   end
+  
+  def to_kb
+    result = data.dup
+    result[:jsSize] /= 1024.0
+    result[:cssSize] /= 1024.0
+    result[:imagesSize] /= 1024.0
+    result[:vendorSize] /= 1024.0
+    result[:parts].each do |p|
+      p[:contentSize] /= 1024.0
+      p[:headersSize] /= 1024.0
+      p[:bodySize] /= 1024.0
+    end
+    @data = result
+
+    self
+  end
 
   def to_json
     data.to_json

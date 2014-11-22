@@ -21,9 +21,9 @@ def run
 
   if tty.argindex( "human" )
     if tty.argindex( "csv" )
-      puts export.to_csv
+      puts export.to_kb.to_csv
     else
-      puts JSON.pretty_generate( export.data, { space: " ", indent: "  " } )
+      puts JSON.pretty_generate( export.to_kb, { space: " ", indent: "  " } )
     end
   else
     if tty.argindex( "csv" )

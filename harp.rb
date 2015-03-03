@@ -67,7 +67,7 @@ class Harp
   end
 
   def is_vendor?( entry )
-    (/coverhound\.com/ =~ entry[:request][:url]).nil?
+    (/(?:coverhound\.(?:com|us))|(?:dju30pjf9v3wv\.cloudfront\.net)/ =~ entry[:request][:url]).nil?
   end
 
   def is_js?( entry )

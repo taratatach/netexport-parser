@@ -1,6 +1,11 @@
 require 'json'
+
+# Command line helpers
 require File.join(File.dirname(__FILE__), '.', 'cmdlinetool')
-require File.join(File.dirname(__FILE__), '.', 'harp')
+# Classes
+require './models/web_archive'
+require './models/har'
+require './models/harp'
 
 include Helpers
 
@@ -17,7 +22,8 @@ def run
   inputname = tty.input
   raise "File #{inputname} not found" unless File.file?( inputname )
 
-  export = Harp.new( inputname )
+  filetype = (inputname[-1] == "p") ? Harp : Har
+  export = filetype.new( inputname )
 
   if tty.argindex( "human" )
     if tty.argindex( "csv" )

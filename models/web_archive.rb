@@ -1,15 +1,55 @@
-require 'json'
 require 'csv'
 
-class Harp
+class WebArchive
   def initialize( filename )
     @filename = filename
-    @file = File.read( filename )[12..-3]
-    @data = parse
   end
 
+  def to_kb
+    result = data.dup
+    result[:jsSize] /= 1024.0
+    result[:cssSize] /= 1024.0
+    result[:imagesSize] /= 1024.0
+    result[:vendorSize] /= 1024.0
+    result[:parts].each do |p|
+      p[:contentSize] /= 1024.0
+      p[:headersSize] /= 1024.0
+      p[:bodySize] /= 1024.0
+    end
+    @data = result
+
+    self
+  end
+
+  def to_json
+    data.to_json
+  end
+
+  def to_csv
+    url = data[:url].split('.com/').last
+    [url, "", "", data[:jsSize], data[:cssSize], data[:imagesSize], data[:vendorSize]].to_csv
+  end
+
+  private
+
   def data
-    @data
+    @data ||= parse
+  end
+
+  def is_vendor?( entry )
+    (/(?:coverhound\.(?:com|us))|(?:dju30pjf9v3wv\.cloudfront\.net)/ =~ entry[:request][:url]).nil?
+  end
+
+  def is_js?( entry )
+    /\.js/ =~ entry[:request][:url]
+  end
+
+  def is_css?( entry )
+    /\.css/ =~ entry[:request][:url]
+  end
+
+  def is_image?( entry )
+    /\.(png|gif|jpg|jpeg)/ =~ entry[:request][:url]
   end
 
   def parse
@@ -64,46 +104,5 @@ class Harp
     end
 
     output
-  end
-
-  def is_vendor?( entry )
-    (/(?:coverhound\.(?:com|us))|(?:dju30pjf9v3wv\.cloudfront\.net)/ =~ entry[:request][:url]).nil?
-  end
-
-  def is_js?( entry )
-    /\.js/ =~ entry[:request][:url]
-  end
-
-  def is_css?( entry )
-    /\.css/ =~ entry[:request][:url]
-  end
-
-  def is_image?( entry )
-    /\.(png|gif|jpg|jpeg)/ =~ entry[:request][:url]
-  end
-  
-  def to_kb
-    result = data.dup
-    result[:jsSize] /= 1024.0
-    result[:cssSize] /= 1024.0
-    result[:imagesSize] /= 1024.0
-    result[:vendorSize] /= 1024.0
-    result[:parts].each do |p|
-      p[:contentSize] /= 1024.0
-      p[:headersSize] /= 1024.0
-      p[:bodySize] /= 1024.0
-    end
-    @data = result
-
-    self
-  end
-
-  def to_json
-    data.to_json
-  end
-
-  def to_csv
-    url = data[:url].split('.com/').last
-    [url, "", "", data[:jsSize], data[:cssSize], data[:imagesSize], data[:vendorSize]].to_csv
   end
 end
